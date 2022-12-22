@@ -51,9 +51,11 @@ impl Lox {
     }
 
     fn run(&self, source: String) {
-        let scan = scanner::Scanner::new_from(source);
+        let mut scan = scanner::Scanner::new_from(source);
         let tokens = scan.scan_tokens();
-        for token in &tokens {}
+        for token in tokens {
+            print!("token {:?}", token.to_string())
+        }
     }
 
     pub fn start_up(&mut self, args: Vec<String>) {
