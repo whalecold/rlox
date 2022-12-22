@@ -187,13 +187,16 @@ impl Scanner<'_> {
         while Scanner::is_alpha_numeric(self.peek()) {
             self.advance();
         }
-        let text = self.source.index(self.start..self.current);
-        let kind = match self.hash_map.get(text) {
-            None => TokenType::Identifier,
-            Some(val) => *val,
-        };
 
-        self.add_to_token(kind)
+        self.add_to_token(
+            match self
+                .hash_map
+                .get(self.source.index(self.start..self.current))
+            {
+                None => TokenType::Identifier,
+                Some(val) => *val,
+            },
+        )
     }
 
     fn number(&mut self) {
