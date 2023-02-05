@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use phf::phf_map;
 use std::marker::Copy;
 use std::{ops::Index, str::FromStr};
 
@@ -53,38 +53,46 @@ pub enum TokenType {
     Eof,
 }
 
-pub struct Scanner<'a> {
+static KEYWORDS: phf::Map<&str, TokenType> = phf_map! {
+    "and" => TokenType::And,
+    "class"=> TokenType::Class,
+    "else" => TokenType::Else,
+    "false" => TokenType::False,
+    "for" => TokenType::For,
+    "fun" => TokenType::Fun,
+    "if" => TokenType::If,
+    "nil" => TokenType::Nil,
+    "or" => TokenType::Or,
+    "print" => TokenType::Print,
+    "return" => TokenType::Return,
+    "super" => TokenType::Super,
+    "this" => TokenType::This,
+    "true" => TokenType::True,
+    "var" => TokenType::Var,
+    "while" => TokenType::While
+};
+
+#[derive(Clone, EnumString, Display, Debug, PartialEq)]
+pub enum Literal {
+    String(String),
+    Number(u64),
+    Boolean(bool),
+    Nil,
+}
+
+pub struct Scanner {
     source: String,
     tokens: Vec<Token>,
-    hash_map: HashMap<&'a str, TokenType>,
     start: usize,
     current: usize,
     line: usize,
 }
 
-impl Scanner<'_> {
-    pub fn new_from(source: String) -> Scanner<'static> {
-        let mut hm = HashMap::new();
-        hm.insert("and", TokenType::And);
-        hm.insert("class", TokenType::Class);
-        hm.insert("else", TokenType::Else);
-        hm.insert("false", TokenType::False);
-        hm.insert("for", TokenType::For);
-        hm.insert("fun", TokenType::Fun);
-        hm.insert("if", TokenType::If);
-        hm.insert("nil", TokenType::Nil);
-        hm.insert("or", TokenType::Or);
-        hm.insert("print", TokenType::Print);
-        hm.insert("return", TokenType::Return);
-        hm.insert("super", TokenType::Super);
-        hm.insert("this", TokenType::This);
-        hm.insert("true", TokenType::True);
-        hm.insert("var", TokenType::Var);
-        hm.insert("while", TokenType::While);
+impl Scanner {
+    pub fn new_from(source: String) -> Scanner {
         Scanner {
             source,
             tokens: Vec::new(),
-            hash_map: hm,
             start: 0,
             current: 0,
             line: 1,
@@ -112,7 +120,7 @@ impl Scanner<'_> {
             TokenType::Eof,
             String::new(),
             self.line as i32,
-            String::new(),
+            Literal::Nil,
         ));
         &self.tokens
     }
@@ -189,10 +197,7 @@ impl Scanner<'_> {
         }
 
         self.add_to_token(
-            match self
-                .hash_map
-                .get(self.source.index(self.start..self.current))
-            {
+            match KEYWORDS.get(self.source.index(self.start..self.current)) {
                 None => TokenType::Identifier,
                 Some(val) => *val,
             },
@@ -210,9 +215,10 @@ impl Scanner<'_> {
                 self.advance();
             }
         }
+        let val = self.source.index(self.start..self.current);
         self.add_to_token_raw(
             TokenType::Number,
-            String::from_str(self.source.index(self.start..self.current)).unwrap(),
+            Literal::Number(val.parse::<u64>().unwrap()),
         )
     }
 
@@ -231,11 +237,9 @@ impl Scanner<'_> {
         // The closing ".
         self.advance();
 
+        let val = String::from_str(self.source.index(self.start + 1..self.current - 1)).unwrap();
         // Trim the surrounding quotes.
-        self.add_to_token_raw(
-            TokenType::Strings,
-            String::from_str(self.source.index(self.start + 1..self.current - 1)).unwrap(),
-        );
+        self.add_to_token_raw(TokenType::Strings, Literal::String(val));
     }
 
     fn match_with_char(&mut self, expected: char) -> bool {
@@ -257,10 +261,10 @@ impl Scanner<'_> {
     }
 
     fn add_to_token(&mut self, kind: TokenType) {
-        self.add_to_token_raw(kind, String::new())
+        self.add_to_token_raw(kind, Literal::Nil)
     }
 
-    fn add_to_token_raw(&mut self, kind: TokenType, literal: String) {
+    fn add_to_token_raw(&mut self, kind: TokenType, literal: Literal) {
         let text = self.source.index(self.start..self.current);
         self.tokens.push(Token::new(
             kind,
@@ -291,11 +295,11 @@ pub struct Token {
     token_type: TokenType,
     lexeme: String,
     line: i32,
-    literal: String,
+    literal: Literal,
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, lexeme: String, line: i32, literal: String) -> Token {
+    pub fn new(token_type: TokenType, lexeme: String, line: i32, literal: Literal) -> Token {
         Token {
             token_type,
             lexeme,
@@ -308,7 +312,18 @@ impl Token {
         ret.push_str("/");
         ret.push_str(self.lexeme.as_str());
         ret.push_str("/");
-        ret.push_str(self.literal.as_str());
+        match self.literal {
+            Literal::String(ref val) => ret.push_str(val.as_str()),
+            Literal::Nil => ret.push_str("nil"),
+            Literal::Number(num) => ret.push_str(num.to_string().as_str()),
+            Literal::Boolean(b) => {
+                if b == true {
+                    ret.push_str("true")
+                } else {
+                    ret.push_str("false")
+                }
+            }
+        };
         ret
     }
 }
