@@ -135,3 +135,35 @@ func (p *Parser) consume(typ TokenType, message string) *Token {
 	Panic(p.peek().line, message)
 	return nil
 }
+
+func (p *Parser) ParseStmts() []Stmt {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println(r)
+		}
+	}()
+	var stmts []Stmt
+	for !p.isAtEnd() {
+		stmts = append(stmts, p.statement())
+	}
+	return stmts
+}
+
+func (p *Parser) statement() Stmt {
+	if p.match(PRINT) {
+		return p.printStatement()
+	}
+	return p.exprStatement()
+}
+
+func (p *Parser) printStatement() Stmt {
+	expr := p.expression()
+	p.consume(SEMICOLON, "Expect ';' after value.")
+	return &Print{expr}
+}
+
+func (p *Parser) exprStatement() Stmt {
+	expr := p.expression()
+	p.consume(SEMICOLON, "Expect ';' after expression.")
+	return &Expression{expr}
+}

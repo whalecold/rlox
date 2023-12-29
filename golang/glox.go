@@ -45,13 +45,14 @@ func runPrompt() {
 func run(content string) {
 	scanner := NewScanner(content)
 	parser := &Parser{tokens: scanner.ScanTokens()}
-	expr := parser.Parse()
-	if expr == nil {
-		fmt.Println(expr.Accept(&AstPrinter{}))
+	stmts := parser.ParseStmts()
+	if stmts == nil {
 		return
 	}
-	fmt.Println(expr.Accept(&AstPrinter{}))
-	fmt.Println(interpret(expr))
+	//fmt.Println(expr.Accept(&AstPrinter{}))
+	inter := &Interpreter{}
+
+	inter.Interpreter(stmts)
 
 	//for _, token := range scanner.ScanTokens() {
 	//	fmt.Println("token: ", token)

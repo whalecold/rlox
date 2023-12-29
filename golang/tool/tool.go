@@ -20,12 +20,16 @@ func main() {
 		"Grouping:expression Expr",
 		"Literal:value any",
 		"Unary:operator *Token,right Expr",
-	},
-	)
+	})
+
+	defineAst(outputDir, "Stmt", []string{
+		"Expression:expr Expr",
+		"Print:expr Expr",
+	})
 }
 
 func defineAst(outputDir, baseName string, types []string) {
-	path := outputDir + "/" + baseName + ".go"
+	path := outputDir + "/" + strings.ToLower(baseName) + ".go"
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		panic(err)
@@ -36,18 +40,19 @@ func defineAst(outputDir, baseName string, types []string) {
 
 	// expr interface
 	file.Write([]byte("type " + baseName + " interface {\n"))
-	file.Write([]byte("  Accept(Visitor) any \n"))
+	file.Write([]byte("  Accept(" + baseName + "Visitor) any \n"))
 	file.Write([]byte("}\n\n"))
 
 	// visitor interface
-	file.Write([]byte("type Visitor interface {\n"))
+	file.Write([]byte("type " + baseName + "Visitor interface {\n"))
 	for _, t := range types {
 		parts := strings.Split(t, ":")
 		class := strings.TrimSpace(parts[0])
-		file.Write([]byte("  Visit" + class + "Expr(" + baseName + ") any \n"))
+		file.Write([]byte("  Visit" + class + baseName + "(" + baseName + ") any \n"))
 	}
 	file.Write([]byte("}\n\n"))
 
+	// implementation
 	for _, t := range types {
 		parts := strings.Split(t, ":")
 		class := strings.TrimSpace(parts[0])
@@ -56,16 +61,6 @@ func defineAst(outputDir, baseName string, types []string) {
 	}
 	file.Close()
 }
-
-var recoverStr = `
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println(r)
-			ret = nil
-		}
-	}()
-
-`
 
 func defineType(file *os.File, baseName, className, fields string) {
 	file.Write([]byte("type " + className + " struct {\n"))
@@ -79,7 +74,7 @@ func defineType(file *os.File, baseName, className, fields string) {
 	file.Write([]byte("}\n\n"))
 
 	// Accept function
-	file.Write([]byte("func (e *" + className + ") Accept(v Visitor) (ret any) {\n"))
-	file.Write([]byte("  return v.Visit" + className + "Expr(e)\n"))
+	file.Write([]byte("func (e *" + className + ") Accept(v " + baseName + "Visitor) (ret any) {\n"))
+	file.Write([]byte("  return v.Visit" + className + baseName + "(e)\n"))
 	file.Write([]byte("}\n\n"))
 }

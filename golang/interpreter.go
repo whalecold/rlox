@@ -117,3 +117,34 @@ func (i *Interpreter) evaluate(expr Expr) any {
 func (i *Interpreter) VisitErrorExprExpr(expr Expr) any {
 	return expr.Accept(i)
 }
+
+func (i *Interpreter) VisitPrintStmt(stmt Stmt) any {
+	s, ok := stmt.(*Print)
+	if !ok {
+		panic("should be print type stmt")
+	}
+	val := i.evaluate(s.expr)
+	fmt.Println(toString(val))
+	return nil
+}
+
+func (i *Interpreter) VisitExpressionStmt(stmt Stmt) any {
+	s, ok := stmt.(*Expression)
+	if !ok {
+		panic("should be expression type stmt")
+	}
+	return i.evaluate(s.expr)
+}
+
+func (i *Interpreter) Interpreter(stmts []Stmt) any {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println(err)
+			hadError = true
+		}
+	}()
+	for _, stmt := range stmts {
+		stmt.Accept(i)
+	}
+	return nil
+}
