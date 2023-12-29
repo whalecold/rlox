@@ -4,6 +4,13 @@ import "fmt"
 
 type Interpreter struct {
 	line int
+	env  *Environment
+}
+
+func NewInterpreter() *Interpreter {
+	return &Interpreter{
+		env: NewEnvironment(),
+	}
 }
 
 func (i *Interpreter) isTruthy(val any) bool {
@@ -110,11 +117,15 @@ func (i *Interpreter) VisitGroupingExpr(expr Expr) any {
 	return i.evaluate(e.expression)
 }
 
-func (i *Interpreter) evaluate(expr Expr) any {
-	return expr.Accept(i)
+func (i *Interpreter) VisitVariableExpr(expr Expr) any {
+	e, ok := expr.(*Variable)
+	if !ok {
+		panic("should be variable type")
+	}
+	return i.env.Get(e.name)
 }
 
-func (i *Interpreter) VisitErrorExprExpr(expr Expr) any {
+func (i *Interpreter) evaluate(expr Expr) any {
 	return expr.Accept(i)
 }
 
@@ -134,6 +145,19 @@ func (i *Interpreter) VisitExpressionStmt(stmt Stmt) any {
 		panic("should be expression type stmt")
 	}
 	return i.evaluate(s.expr)
+}
+
+func (i *Interpreter) VisitVarStmt(stmt Stmt) any {
+	s, ok := stmt.(*Var)
+	if !ok {
+		panic("should be variable type stmt")
+	}
+	var val any
+	if s.initializer != nil {
+		val = i.evaluate(s.initializer)
+	}
+	i.env.Define(s.name.lexeme, val)
+	return nil
 }
 
 func (i *Interpreter) Interpreter(stmts []Stmt) any {

@@ -6,6 +6,8 @@ import (
 	"os"
 )
 
+var inter = NewInterpreter()
+
 func main() {
 	if len(os.Args) > 2 {
 		fmt.Println("Usage: glox [script]")
@@ -50,7 +52,6 @@ func run(content string) {
 		return
 	}
 	//fmt.Println(expr.Accept(&AstPrinter{}))
-	inter := &Interpreter{}
 
 	inter.Interpreter(stmts)
 
@@ -60,6 +61,9 @@ func run(content string) {
 }
 
 func toString(in any) string {
+	if in == nil {
+		return "nil"
+	}
 	switch in.(type) {
 	case string:
 		return fmt.Sprintf(`"%s"`, in)

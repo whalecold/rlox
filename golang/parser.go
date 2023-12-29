@@ -119,6 +119,9 @@ func (p *Parser) primary() Expr {
 	if p.match(NUMBER, STRING) {
 		return &Literal{p.previous().literal}
 	}
+	if p.match(IDENTIFIER) {
+		return &Variable{p.previous()}
+	}
 	if p.match(LEFT_PAREN) {
 		expression := p.expression()
 		p.consume(RIGHT_PAREN, "Expect ')' after expression.")
@@ -136,6 +139,21 @@ func (p *Parser) consume(typ TokenType, message string) *Token {
 	return nil
 }
 
+func (p *Parser) synchronize() {
+	p.advance()
+	for !p.isAtEnd() {
+		if p.previous().typ == SEMICOLON {
+			return
+		}
+		switch p.peek().typ {
+		case CLASS, FUN, VAR, FOR, IF, WHILE, PRINT, RETURN:
+			return
+		default:
+			p.advance()
+		}
+	}
+}
+
 func (p *Parser) ParseStmts() []Stmt {
 	defer func() {
 		if r := recover(); r != nil {
@@ -144,9 +162,34 @@ func (p *Parser) ParseStmts() []Stmt {
 	}()
 	var stmts []Stmt
 	for !p.isAtEnd() {
-		stmts = append(stmts, p.statement())
+		stmts = append(stmts, p.declaration())
 	}
 	return stmts
+}
+
+func (p *Parser) declaration() Stmt {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println(r)
+			p.synchronize()
+			hadError = false
+		}
+	}()
+
+	if p.match(VAR) {
+		return p.varDeclaration()
+	}
+	return p.statement()
+}
+
+func (p *Parser) varDeclaration() Stmt {
+	name := p.consume(IDENTIFIER, "Expect variable name.")
+	var initializer Expr
+	if p.match(EQUAL) {
+		initializer = p.expression()
+	}
+	p.consume(SEMICOLON, "Expect ';' after variable declaration.")
+	return &Var{name, initializer}
 }
 
 func (p *Parser) statement() Stmt {

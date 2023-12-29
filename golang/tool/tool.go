@@ -20,11 +20,13 @@ func main() {
 		"Grouping:expression Expr",
 		"Literal:value any",
 		"Unary:operator *Token,right Expr",
+		"Variable:name *Token",
 	})
 
 	defineAst(outputDir, "Stmt", []string{
 		"Expression:expr Expr",
 		"Print:expr Expr",
+		"Var:name *Token,initializer Expr",
 	})
 }
 

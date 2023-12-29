@@ -52,3 +52,7 @@ func (ap *AstPrinter) VisitLiteralExpr(e Expr) any {
 	}
 	return literal.value
 }
+
+func (ap *AstPrinter) VisitVariableExpr(e Expr) any {
+	return nil
+}
