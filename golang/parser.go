@@ -63,8 +63,23 @@ func (p *Parser) equality() Expr {
 	return expr
 }
 
+func (p *Parser) assignment() Expr {
+	expr := p.equality()
+	if p.match(EQUAL) {
+		equals := p.previous()
+		value := p.assignment()
+
+		if ident, ok := expr.(*Variable); ok {
+			name := ident.name
+			return &Assign{name, value}
+		}
+		Panic(equals.line, "Invalid assignment target.")
+	}
+	return expr
+}
+
 func (p *Parser) expression() Expr {
-	return p.equality()
+	return p.assignment()
 }
 
 func (p *Parser) comparison() Expr {

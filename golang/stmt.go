@@ -3,13 +3,13 @@
 package main
 
 type Stmt interface {
-	Accept(StmtVisitor) any
+  Accept(StmtVisitor) any 
 }
 
 type StmtVisitor interface {
-	VisitExpressionStmt(Stmt) any
-	VisitPrintStmt(Stmt) any
-	VisitVarStmt(Stmt) any
+  VisitExpressionStmt(Stmt) any 
+  VisitPrintStmt(Stmt) any 
+  VisitVarStmt(Stmt) any 
 }
 
 type Expression struct {
@@ -17,7 +17,7 @@ type Expression struct {
 }
 
 func (e *Expression) Accept(v StmtVisitor) (ret any) {
-	return v.VisitExpressionStmt(e)
+  return v.VisitExpressionStmt(e)
 }
 
 type Print struct {
@@ -25,14 +25,15 @@ type Print struct {
 }
 
 func (e *Print) Accept(v StmtVisitor) (ret any) {
-	return v.VisitPrintStmt(e)
+  return v.VisitPrintStmt(e)
 }
 
 type Var struct {
-	name        *Token
+	name *Token
 	initializer Expr
 }
 
 func (e *Var) Accept(v StmtVisitor) (ret any) {
-	return v.VisitVarStmt(e)
+  return v.VisitVarStmt(e)
 }
+

@@ -21,6 +21,7 @@ func main() {
 		"Literal:value any",
 		"Unary:operator *Token,right Expr",
 		"Variable:name *Token",
+		"Assign:name *Token,value Expr",
 	})
 
 	defineAst(outputDir, "Stmt", []string{

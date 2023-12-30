@@ -125,6 +125,18 @@ func (i *Interpreter) VisitVariableExpr(expr Expr) any {
 	return i.env.Get(e.name)
 }
 
+func (i *Interpreter) VisitAssignExpr(expr Expr) any {
+	e, ok := expr.(*Assign)
+	if !ok {
+		panic("should be assign type")
+	}
+	// can't assign to undeclared variable
+	i.env.Get(e.name)
+	val := i.evaluate(e.value)
+	i.env.Define(e.name.lexeme, val)
+	return val
+}
+
 func (i *Interpreter) evaluate(expr Expr) any {
 	return expr.Accept(i)
 }
