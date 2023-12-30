@@ -60,3 +60,7 @@ func (ap *AstPrinter) VisitLiteralExpr(e Expr) any {
 func (ap *AstPrinter) VisitVariableExpr(e Expr) any {
 	return nil
 }
+
+func (ap *AstPrinter) VisitLogicalExpr(e Expr) any {
+	return nil
+}

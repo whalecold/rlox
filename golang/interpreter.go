@@ -125,6 +125,24 @@ func (i *Interpreter) VisitVariableExpr(expr Expr) any {
 	return i.env.Get(e.name)
 }
 
+func (i *Interpreter) VisitLogicalExpr(expr Expr) any {
+	e, ok := expr.(*Logical)
+	if !ok {
+		panic("should be logical type")
+	}
+	left := i.evaluate(e.left)
+	if i.isTruthy(left) {
+		if e.operator.typ == OR {
+			return left
+		}
+	} else {
+		if e.operator.typ == AND {
+			return left
+		}
+	}
+	return i.evaluate(e.right)
+}
+
 func (i *Interpreter) VisitAssignExpr(expr Expr) any {
 	e, ok := expr.(*Assign)
 	if !ok {
@@ -168,6 +186,30 @@ func (i *Interpreter) VisitVarStmt(stmt Stmt) any {
 		val = i.evaluate(s.initializer)
 	}
 	i.env.Define(s.name.lexeme, val)
+	return nil
+}
+
+func (i *Interpreter) VisitIfStmt(stmt Stmt) any {
+	s, ok := stmt.(*If)
+	if !ok {
+		panic("should be if type stmt")
+	}
+	if i.isTruthy(i.evaluate(s.condition)) {
+		i.execute(s.thenBranch)
+	} else if s.elseBranch != nil {
+		i.execute(s.elseBranch)
+	}
+	return nil
+}
+
+func (i *Interpreter) VisitWhileStmt(stmt Stmt) any {
+	s, ok := stmt.(*While)
+	if !ok {
+		panic("should be while type stmt")
+	}
+	for i.isTruthy(i.evaluate(s.condition)) {
+		i.execute(s.body)
+	}
 	return nil
 }
 

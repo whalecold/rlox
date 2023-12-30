@@ -22,6 +22,7 @@ func main() {
 		"Unary:operator *Token,right Expr",
 		"Variable:name *Token",
 		"Assign:name *Token,value Expr",
+		"Logical:left Expr,operator *Token,right Expr",
 	})
 
 	defineAst(outputDir, "Stmt", []string{
@@ -29,6 +30,8 @@ func main() {
 		"Print:expr Expr",
 		"Var:name *Token,initializer Expr",
 		"Block:statements []Stmt",
+		"If:condition Expr,thenBranch Stmt,elseBranch Stmt",
+		"While:condition Expr,body Stmt",
 	})
 }
 
