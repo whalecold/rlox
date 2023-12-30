@@ -13,7 +13,7 @@ func TestAstPrinter(t *testing.T) {
 	assert.Equal(t, 45.67, out.Accept(&AstPrinter{}))
 	expr := &Binary{
 		left: &Unary{
-			operator: Token{
+			operator: &Token{
 				typ:    MINUS,
 				lexeme: "-",
 				line:   1,

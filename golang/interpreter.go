@@ -131,9 +131,8 @@ func (i *Interpreter) VisitAssignExpr(expr Expr) any {
 		panic("should be assign type")
 	}
 	// can't assign to undeclared variable
-	i.env.Get(e.name)
 	val := i.evaluate(e.value)
-	i.env.Define(e.name.lexeme, val)
+	i.env.Assign(e.name, val)
 	return val
 }
 
@@ -172,6 +171,30 @@ func (i *Interpreter) VisitVarStmt(stmt Stmt) any {
 	return nil
 }
 
+func (i *Interpreter) VisitBlockStmt(stmt Stmt) any {
+	s, ok := stmt.(*Block)
+	if !ok {
+		panic("should be block type stmt")
+	}
+	i.executeBlock(s.statements, NewEnvironmentWithAncestor(i.env))
+	return nil
+}
+
+func (i *Interpreter) execute(stmt Stmt) any {
+	return stmt.Accept(i)
+}
+
+func (i *Interpreter) executeBlock(statements []Stmt, env *Environment) {
+	previous := i.env
+	i.env = env
+	defer func() {
+		i.env = previous
+	}()
+	for _, stmt := range statements {
+		i.execute(stmt)
+	}
+}
+
 func (i *Interpreter) Interpreter(stmts []Stmt) any {
 	defer func() {
 		if err := recover(); err != nil {
@@ -180,7 +203,7 @@ func (i *Interpreter) Interpreter(stmts []Stmt) any {
 		}
 	}()
 	for _, stmt := range stmts {
-		stmt.Accept(i)
+		i.execute(stmt)
 	}
 	return nil
 }

@@ -2,4 +2,4 @@
 .vscode
 golang/vendor
 golang/glox
-
+*.glox
