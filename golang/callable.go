@@ -62,6 +62,7 @@ func (c *callableImpl) Call(i *Interpreter, args []any) (ret any) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch r.(type) {
+			// implements the return syntax
 			case *ReturnPanic:
 				ret = r.(*ReturnPanic).Value
 			default:

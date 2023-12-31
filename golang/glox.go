@@ -38,9 +38,6 @@ func runPrompt() {
 			break
 		}
 		run(text)
-		if hadError {
-			return
-		}
 	}
 }
 
@@ -48,16 +45,18 @@ func run(content string) {
 	scanner := NewScanner(content)
 	parser := &Parser{tokens: scanner.ScanTokens()}
 	stmts := parser.ParseStmts()
+	if hadError {
+		return
+	}
 	if stmts == nil {
 		return
 	}
-	//fmt.Println(expr.Accept(&AstPrinter{}))
-
-	inter.Interpreter(stmts)
-
-	//for _, token := range scanner.ScanTokens() {
-	//	fmt.Println("token: ", token)
-	//}
+	resolver := NewResolver(inter)
+	resolver.Resolve(stmts)
+	if hadError {
+		return
+	}
+	inter.Execute(stmts)
 }
 
 func ToString(in any) string {
@@ -74,14 +73,4 @@ func ToString(in any) string {
 	default:
 		return fmt.Sprintf("%v", in)
 	}
-}
-
-func interpret(expr Expr) any {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println(r)
-			hadError = true
-		}
-	}()
-	return ToString(expr.Accept(&Interpreter{}))
 }

@@ -6,11 +6,13 @@ type Interpreter struct {
 	line    int
 	env     *Environment
 	globals *Environment
+	locals  map[Expr]int
 }
 
 func NewInterpreter() *Interpreter {
 	i := &Interpreter{
 		globals: NewEnvironment(),
+		locals:  make(map[Expr]int),
 	}
 	i.env = i.globals
 	return injectPrimitives(i)
@@ -125,7 +127,14 @@ func (i *Interpreter) VisitVariableExpr(expr Expr) any {
 	if !ok {
 		panic("should be variable type expr")
 	}
-	return i.env.Get(e.name)
+	return i.lookupVariable(e.name, expr)
+}
+
+func (i *Interpreter) lookupVariable(name *Token, expr Expr) any {
+	if distance, ok := i.locals[expr]; ok {
+		return i.env.GetAt(distance, name.lexeme)
+	}
+	return i.globals.Get(name)
 }
 
 func (i *Interpreter) VisitCallExpr(expr Expr) any {
@@ -174,7 +183,12 @@ func (i *Interpreter) VisitAssignExpr(expr Expr) any {
 	}
 	// can't assign to undeclared variable
 	val := i.evaluate(e.value)
-	i.env.Assign(e.name, val)
+	dis, ok := i.locals[expr]
+	if ok {
+		i.env.AssignAt(dis, e.name, val)
+	} else {
+		i.globals.Assign(e.name, val)
+	}
 	return val
 }
 
@@ -271,6 +285,10 @@ func (i *Interpreter) execute(stmt Stmt) any {
 	return stmt.Accept(i)
 }
 
+func (i *Interpreter) resolve(expr Expr, depth int) {
+	i.locals[expr] = depth
+}
+
 func (i *Interpreter) executeBlock(statements []Stmt, env *Environment) {
 	previous := i.env
 	i.env = env
@@ -282,7 +300,7 @@ func (i *Interpreter) executeBlock(statements []Stmt, env *Environment) {
 	}
 }
 
-func (i *Interpreter) Interpreter(stmts []Stmt) any {
+func (i *Interpreter) Execute(stmts []Stmt) any {
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Println(err)
