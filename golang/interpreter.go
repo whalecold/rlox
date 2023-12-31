@@ -254,7 +254,7 @@ func (i *Interpreter) VisitFunctionStmt(stmt Stmt) any {
 	if !ok {
 		panic("should be function type stmt")
 	}
-	i.env.Define(s.name.lexeme, NewCallable(s))
+	i.env.Define(s.name.lexeme, NewCallable(s, i.env))
 	return s
 }
 

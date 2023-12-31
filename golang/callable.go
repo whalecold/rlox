@@ -22,21 +22,23 @@ type callableImpl struct {
 	fn          CallableFunc
 	primitive   bool
 	declaration *Function
+	closure     *Environment
 }
 
 func NewPrimitive(arity int, fn CallableFunc) Callable {
-	return &callableImpl{
+	return Callable(&callableImpl{
 		argsNumber: arity,
 		primitive:  true,
 		fn:         fn,
-	}
+	})
 }
 
-func NewCallable(declaration *Function) Callable {
-	return &callableImpl{
+func NewCallable(declaration *Function, e *Environment) Callable {
+	return Callable(&callableImpl{
 		primitive:   false,
 		declaration: declaration,
-	}
+		closure:     e,
+	})
 }
 
 func (c *callableImpl) ToString() string {
@@ -53,17 +55,18 @@ func (c *callableImpl) Call(i *Interpreter, args []any) (ret any) {
 	if c.primitive {
 		return c.fn(args)
 	}
-	e := NewEnvironmentWithAncestor(i.globals)
+	e := NewEnvironmentWithAncestor(c.closure)
 	for k, v := range c.declaration.params {
 		e.Define(v.lexeme, args[k])
 	}
 	defer func() {
-		r := recover()
-		switch r.(type) {
-		case *ReturnPanic:
-			ret = r.(*ReturnPanic).Value
-		default:
-			panic(r)
+		if r := recover(); r != nil {
+			switch r.(type) {
+			case *ReturnPanic:
+				ret = r.(*ReturnPanic).Value
+			default:
+				panic(r)
+			}
 		}
 	}()
 	i.executeBlock(c.declaration.body, e)
