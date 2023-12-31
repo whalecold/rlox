@@ -23,11 +23,14 @@ func main() {
 		"Variable:name *Token",
 		"Assign:name *Token,value Expr",
 		"Logical:left Expr,operator *Token,right Expr",
+		"Call:callee Expr,paren *Token,arguments []Expr",
 	})
 
 	defineAst(outputDir, "Stmt", []string{
 		"Expression:expr Expr",
+		"Function:name *Token,params []*Token,body []Stmt",
 		"Print:expr Expr",
+		"Return:keyword *Token,value Expr",
 		"Var:name *Token,initializer Expr",
 		"Block:statements []Stmt",
 		"If:condition Expr,thenBranch Stmt,elseBranch Stmt",

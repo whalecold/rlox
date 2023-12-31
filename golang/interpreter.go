@@ -3,14 +3,17 @@ package main
 import "fmt"
 
 type Interpreter struct {
-	line int
-	env  *Environment
+	line    int
+	env     *Environment
+	globals *Environment
 }
 
 func NewInterpreter() *Interpreter {
-	return &Interpreter{
-		env: NewEnvironment(),
+	i := &Interpreter{
+		globals: NewEnvironment(),
 	}
+	i.env = i.globals
+	return injectPrimitives(i)
 }
 
 func (i *Interpreter) isTruthy(val any) bool {
@@ -26,7 +29,7 @@ func (i *Interpreter) isTruthy(val any) bool {
 func (i *Interpreter) VisitUnaryExpr(expr Expr) any {
 	e, ok := expr.(*Unary)
 	if !ok {
-		panic("should be unary type")
+		panic("should be unary type expr")
 	}
 	i.line = e.operator.line
 	right := i.evaluate(e.right)
@@ -52,7 +55,7 @@ func (i *Interpreter) float64Val(in any) float64 {
 func (i *Interpreter) VisitBinaryExpr(expr Expr) any {
 	e, ok := expr.(*Binary)
 	if !ok {
-		panic("should be binary type")
+		panic("should be binary type expr")
 	}
 	i.line = e.operator.line
 	left := i.evaluate(e.left)
@@ -104,7 +107,7 @@ func (i *Interpreter) isEqual(a, b any) bool {
 func (i *Interpreter) VisitLiteralExpr(expr Expr) any {
 	e, ok := expr.(*Literal)
 	if !ok {
-		panic("should be literal type")
+		panic("should be literal type expr")
 	}
 	return e.value
 }
@@ -112,7 +115,7 @@ func (i *Interpreter) VisitLiteralExpr(expr Expr) any {
 func (i *Interpreter) VisitGroupingExpr(expr Expr) any {
 	e, ok := expr.(*Grouping)
 	if !ok {
-		panic("should be grouping type")
+		panic("should be grouping type expr")
 	}
 	return i.evaluate(e.expression)
 }
@@ -120,15 +123,36 @@ func (i *Interpreter) VisitGroupingExpr(expr Expr) any {
 func (i *Interpreter) VisitVariableExpr(expr Expr) any {
 	e, ok := expr.(*Variable)
 	if !ok {
-		panic("should be variable type")
+		panic("should be variable type expr")
 	}
 	return i.env.Get(e.name)
+}
+
+func (i *Interpreter) VisitCallExpr(expr Expr) any {
+	e, ok := expr.(*Call)
+	if !ok {
+		panic("should be call type expr")
+	}
+
+	callee := i.evaluate(e.callee)
+	args := make([]any, len(e.arguments))
+	for k, v := range e.arguments {
+		args[k] = i.evaluate(v)
+	}
+	function, ok := callee.(Callable)
+	if !ok {
+		Panic(e.paren.line, fmt.Sprintf("Expect callable but got %v", callee))
+	}
+	if len(args) != function.Arity() {
+		Panic(e.paren.line, fmt.Sprintf("Expected %v arguments but got %v", function.Arity(), len(args)))
+	}
+	return function.Call(i, args)
 }
 
 func (i *Interpreter) VisitLogicalExpr(expr Expr) any {
 	e, ok := expr.(*Logical)
 	if !ok {
-		panic("should be logical type")
+		panic("should be logical type expr")
 	}
 	left := i.evaluate(e.left)
 	if i.isTruthy(left) {
@@ -164,7 +188,7 @@ func (i *Interpreter) VisitPrintStmt(stmt Stmt) any {
 		panic("should be print type stmt")
 	}
 	val := i.evaluate(s.expr)
-	fmt.Println(toString(val))
+	fmt.Println(ToString(val))
 	return nil
 }
 
@@ -174,6 +198,18 @@ func (i *Interpreter) VisitExpressionStmt(stmt Stmt) any {
 		panic("should be expression type stmt")
 	}
 	return i.evaluate(s.expr)
+}
+
+func (i *Interpreter) VisitReturnStmt(stmt Stmt) any {
+	s, ok := stmt.(*Return)
+	if !ok {
+		panic("should be return type stmt")
+	}
+	var val any
+	if s.value != nil {
+		val = i.evaluate(s.value)
+	}
+	panic(&ReturnPanic{Value: val})
 }
 
 func (i *Interpreter) VisitVarStmt(stmt Stmt) any {
@@ -211,6 +247,15 @@ func (i *Interpreter) VisitWhileStmt(stmt Stmt) any {
 		i.execute(s.body)
 	}
 	return nil
+}
+
+func (i *Interpreter) VisitFunctionStmt(stmt Stmt) any {
+	s, ok := stmt.(*Function)
+	if !ok {
+		panic("should be function type stmt")
+	}
+	i.env.Define(s.name.lexeme, NewCallable(s))
+	return s
 }
 
 func (i *Interpreter) VisitBlockStmt(stmt Stmt) any {

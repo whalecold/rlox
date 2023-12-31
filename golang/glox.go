@@ -60,7 +60,7 @@ func run(content string) {
 	//}
 }
 
-func toString(in any) string {
+func ToString(in any) string {
 	if in == nil {
 		return "nil"
 	}
@@ -69,6 +69,8 @@ func toString(in any) string {
 		return fmt.Sprintf(`"%s"`, in)
 	case int:
 		return fmt.Sprintf("%d", in)
+	case Callable:
+		return in.(Callable).ToString()
 	default:
 		return fmt.Sprintf("%v", in)
 	}
@@ -81,5 +83,5 @@ func interpret(expr Expr) any {
 			hadError = true
 		}
 	}()
-	return toString(expr.Accept(&Interpreter{}))
+	return ToString(expr.Accept(&Interpreter{}))
 }

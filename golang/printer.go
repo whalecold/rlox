@@ -37,6 +37,10 @@ func (ap *AstPrinter) VisitBinaryExpr(e Expr) any {
 	return parenthesize(binary.operator.lexeme, binary.left.Accept(ap), binary.right.Accept(ap))
 }
 
+func (ap *AstPrinter) VisitCallExpr(e Expr) any {
+	return nil
+}
+
 func (ap *AstPrinter) VisitAssignExpr(e Expr) any {
 	return nil
 }

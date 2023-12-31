@@ -138,7 +138,36 @@ func (p *Parser) unary() Expr {
 		right := p.unary()
 		return &Unary{operator, right}
 	}
-	return p.primary()
+	return p.call()
+}
+
+func (p *Parser) call() Expr {
+	expr := p.primary()
+	for {
+		if p.match(LEFT_PAREN) {
+			expr = p.finishCall(expr)
+		} else {
+			break
+		}
+	}
+	return expr
+}
+
+func (p *Parser) finishCall(callee Expr) Expr {
+	args := []Expr{}
+	if !p.check(RIGHT_PAREN) {
+		for {
+			if len(args) >= 255 {
+				Panic(p.peek().line, "Can't have more than 255 arguments.")
+			}
+			args = append(args, p.expression())
+			if !p.match(COMMA) {
+				break
+			}
+		}
+	}
+	paren := p.consume(RIGHT_PAREN, "Expect ')' after arguments.")
+	return &Call{callee, paren, args}
 }
 
 func (p *Parser) primary() Expr {
@@ -210,11 +239,35 @@ func (p *Parser) declaration() Stmt {
 			hadError = false
 		}
 	}()
-
+	if p.match(FUN) {
+		return p.function("function")
+	}
 	if p.match(VAR) {
 		return p.varDeclaration()
 	}
 	return p.statement()
+}
+
+func (p *Parser) function(kind string) Stmt {
+	name := p.consume(IDENTIFIER, fmt.Sprintf("Expect kind %s name.", kind))
+	p.consume(LEFT_PAREN, fmt.Sprintf("Expect '(' after %s name.", kind))
+
+	var parameters []*Token
+	if !p.check(RIGHT_PAREN) {
+		for {
+			if len(parameters) >= 255 {
+				Panic(p.peek().line, "Can't have more than 255 parameters.")
+			}
+			parameters = append(parameters, p.consume(IDENTIFIER, "Expect parameter name."))
+			if !p.match(COMMA) {
+				break
+			}
+		}
+	}
+	p.consume(RIGHT_PAREN, "Expect ')' after parameters.")
+	p.consume(LEFT_BRACE, fmt.Sprintf("Expect '{' before %s body.", kind))
+	body := p.block()
+	return &Function{name, parameters, body}
 }
 
 func (p *Parser) varDeclaration() Stmt {
@@ -227,9 +280,22 @@ func (p *Parser) varDeclaration() Stmt {
 	return &Var{name, initializer}
 }
 
+func (p *Parser) returnStatement() Stmt {
+	keyword := p.previous()
+	var value Expr
+	if !p.check(SEMICOLON) {
+		value = p.expression()
+	}
+	p.consume(SEMICOLON, "Expect ';' after return value.")
+	return &Return{keyword, value}
+}
+
 func (p *Parser) statement() Stmt {
 	if p.match(PRINT) {
 		return p.printStatement()
+	}
+	if p.match(RETURN) {
+		return p.returnStatement()
 	}
 	if p.match(IF) {
 		return p.ifStatement()
