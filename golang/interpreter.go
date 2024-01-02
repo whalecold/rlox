@@ -176,6 +176,42 @@ func (i *Interpreter) VisitLogicalExpr(expr Expr) any {
 	return i.evaluate(e.right)
 }
 
+func (i *Interpreter) VisitGetExpr(expr Expr) any {
+	e, ok := expr.(*Get)
+	if !ok {
+		panic("should be get type expr")
+	}
+	val := i.evaluate(e.object)
+	if o, ok := val.(*LoxInstance); ok {
+		return o.Get(e.name)
+	}
+	Panic(e.name.line, "Only instances have properties")
+	return nil
+}
+
+func (i *Interpreter) VisitSetExpr(expr Expr) any {
+	e, ok := expr.(*Set)
+	if !ok {
+		panic("should be set type expr")
+	}
+	obj := i.evaluate(e.object)
+	if o, ok := obj.(*LoxInstance); ok {
+		val := i.evaluate(e.value)
+		o.Set(e.name, val)
+		return val
+	}
+	Panic(e.name.line, "Only instances have fields")
+	return nil
+}
+
+func (i *Interpreter) VisitThisExpr(expr Expr) any {
+	e, ok := expr.(*This)
+	if !ok {
+		panic("should be this type expr")
+	}
+	return i.lookupVariable(e.keyword, expr)
+}
+
 func (i *Interpreter) VisitAssignExpr(expr Expr) any {
 	e, ok := expr.(*Assign)
 	if !ok {
@@ -194,6 +230,23 @@ func (i *Interpreter) VisitAssignExpr(expr Expr) any {
 
 func (i *Interpreter) evaluate(expr Expr) any {
 	return expr.Accept(i)
+}
+
+func (i *Interpreter) VisitClassStmt(stmt Stmt) any {
+	s, ok := stmt.(*Class)
+	if !ok {
+		panic("should be class type stmt")
+	}
+	i.env.Define(s.name.lexeme, nil)
+
+	methods := make(map[string]Callable)
+	for _, method := range s.methods {
+		methods[method.name.lexeme] = NewCallable(method, i.env, method.name.lexeme == "init")
+	}
+
+	loxClass := NewLoxClass(s.name.lexeme, methods)
+	i.env.Assign(s.name, loxClass)
+	return nil
 }
 
 func (i *Interpreter) VisitPrintStmt(stmt Stmt) any {
@@ -268,7 +321,7 @@ func (i *Interpreter) VisitFunctionStmt(stmt Stmt) any {
 	if !ok {
 		panic("should be function type stmt")
 	}
-	i.env.Define(s.name.lexeme, NewCallable(s, i.env))
+	i.env.Define(s.name.lexeme, NewCallable(s, i.env, false))
 	return s
 }
 

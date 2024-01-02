@@ -24,6 +24,9 @@ func main() {
 		"Assign:name *Token,value Expr",
 		"Logical:left Expr,operator *Token,right Expr",
 		"Call:callee Expr,paren *Token,arguments []Expr",
+		"Get:object Expr,name *Token",
+		"Set:object Expr,name *Token,value Expr",
+		"This:keyword *Token",
 	})
 
 	defineAst(outputDir, "Stmt", []string{
@@ -33,6 +36,7 @@ func main() {
 		"Return:keyword *Token,value Expr",
 		"Var:name *Token,initializer Expr",
 		"Block:statements []Stmt",
+		"Class:name *Token,methods []*Function",
 		"If:condition Expr,thenBranch Stmt,elseBranch Stmt",
 		"While:condition Expr,body Stmt",
 	})

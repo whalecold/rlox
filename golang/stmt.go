@@ -13,6 +13,7 @@ type StmtVisitor interface {
 	VisitReturnStmt(Stmt) any
 	VisitVarStmt(Stmt) any
 	VisitBlockStmt(Stmt) any
+	VisitClassStmt(Stmt) any
 	VisitIfStmt(Stmt) any
 	VisitWhileStmt(Stmt) any
 }
@@ -67,6 +68,15 @@ type Block struct {
 
 func (e *Block) Accept(v StmtVisitor) (ret any) {
 	return v.VisitBlockStmt(e)
+}
+
+type Class struct {
+	name    *Token
+	methods []*Function
+}
+
+func (e *Class) Accept(v StmtVisitor) (ret any) {
+	return v.VisitClassStmt(e)
 }
 
 type If struct {

@@ -2,15 +2,35 @@ package main
 
 import "fmt"
 
+type FunctionType int
+
+const (
+	NONE FunctionType = iota
+	FUNCTION
+	INITIALIZER
+	METHOD
+)
+
+type ClassType int
+
+const (
+	CLASSNONE ClassType = iota
+	CLASSCLASS
+)
+
 type Resolver struct {
-	inter  *Interpreter
-	scopes []map[string]bool
+	inter        *Interpreter
+	scopes       []map[string]bool
+	currnetFunc  FunctionType
+	currentClass ClassType
 }
 
 func NewResolver(inter *Interpreter) *Resolver {
 	return &Resolver{
-		inter:  inter,
-		scopes: []map[string]bool{},
+		inter:        inter,
+		scopes:       []map[string]bool{},
+		currnetFunc:  NONE,
+		currentClass: CLASSNONE,
 	}
 }
 
@@ -55,6 +75,25 @@ func (r *Resolver) VisitBinaryExpr(expr Expr) any {
 	}
 	r.resolveExpr(e.left)
 	r.resolveExpr(e.right)
+	return nil
+}
+
+func (r *Resolver) VisitSetExpr(expr Expr) any {
+	e, ok := expr.(*Set)
+	if !ok {
+		panic("should be set type expr")
+	}
+	r.resolveExpr(e.object)
+	r.resolveExpr(e.value)
+	return nil
+}
+
+func (r *Resolver) VisitGetExpr(expr Expr) any {
+	e, ok := expr.(*Get)
+	if !ok {
+		panic("should be get type expr")
+	}
+	r.resolveExpr(e.object)
 	return nil
 }
 
@@ -123,7 +162,7 @@ func (r *Resolver) VisitFunctionStmt(stmt Stmt) any {
 	}
 	r.declare(s.name)
 	r.define(s.name)
-	r.resolveFunction(s)
+	r.resolveFunction(s, FUNCTION)
 	return nil
 }
 
@@ -163,7 +202,13 @@ func (r *Resolver) VisitReturnStmt(stmt Stmt) any {
 	if !ok {
 		panic("should be return type stmt")
 	}
+	if r.currnetFunc == NONE {
+		Panic(s.keyword.line, "Can't return from top-level code.")
+	}
 	if s.value != nil {
+		if r.currnetFunc == INITIALIZER {
+			Panic(s.keyword.line, "Can't return from initializer.")
+		}
 		r.resolveExpr(s.value)
 	}
 	return nil
@@ -179,7 +224,13 @@ func (r *Resolver) VisitWhileStmt(stmt Stmt) any {
 	return nil
 }
 
-func (r *Resolver) resolveFunction(fn *Function) {
+func (r *Resolver) resolveFunction(fn *Function, typ FunctionType) {
+	enclosingFunction := r.currnetFunc
+	r.currnetFunc = typ
+	defer func() {
+		r.currnetFunc = enclosingFunction
+	}()
+
 	r.beginScope()
 	for _, param := range fn.params {
 		r.declare(param)
@@ -211,14 +262,26 @@ func (r *Resolver) declare(token *Token) {
 		return
 	}
 	scope := r.scopes[len(r.scopes)-1]
-	//if _, ok := scope[token.lexeme]; ok {
-	//	Panic(token.line, "Already a variable with this name in this scope.")
-	//}
+	if _, ok := scope[token.lexeme]; ok {
+		Panic(token.line, "Already a variable with this name in this scope.")
+	}
 	scope[token.lexeme] = false
 }
 
 func (r *Resolver) resolveExpr(expr Expr) {
 	expr.Accept(r)
+}
+
+func (r *Resolver) VisitThisExpr(expr Expr) any {
+	e, ok := expr.(*This)
+	if !ok {
+		panic("should be this type expr")
+	}
+	if r.currentClass == CLASSNONE {
+		Panic(e.keyword.line, "Can't use 'this' outside of a class.")
+	}
+	r.resolveLocal(expr, e.keyword)
+	return nil
 }
 
 func (r *Resolver) resolveExprs(exprs []Expr) {
@@ -235,6 +298,34 @@ func (r *Resolver) Resolve(stmts []Stmt) {
 		}
 	}()
 	r.resolveStmts(stmts)
+}
+
+func (r *Resolver) VisitClassStmt(stmt Stmt) any {
+	s, ok := stmt.(*Class)
+	if !ok {
+		panic("should be class type stmt")
+	}
+	enclosingClass := r.currentClass
+	r.currentClass = CLASSCLASS
+
+	r.declare(s.name)
+
+	r.beginScope()
+	r.scopes[len(r.scopes)-1]["this"] = true
+
+	for _, method := range s.methods {
+		functionType := METHOD
+		if method.name.lexeme == "init" {
+			functionType = INITIALIZER
+		}
+		r.resolveFunction(method, functionType)
+	}
+	r.endScope()
+	r.define(s.name)
+
+	r.currentClass = enclosingClass
+
+	return nil
 }
 
 func (r *Resolver) resolveStmts(stmts []Stmt) {

@@ -92,6 +92,8 @@ func (p *Parser) assignment() Expr {
 		if ident, ok := expr.(*Variable); ok {
 			name := ident.name
 			return &Assign{name, value}
+		} else if get, ok := expr.(*Get); ok {
+			return &Set{get.object, get.name, value}
 		}
 		Panic(equals.line, "Invalid assignment target.")
 	}
@@ -146,6 +148,9 @@ func (p *Parser) call() Expr {
 	for {
 		if p.match(LEFT_PAREN) {
 			expr = p.finishCall(expr)
+		} else if p.match(DOT) {
+			name := p.consume(IDENTIFIER, "Expect property name after '.'.")
+			expr = &Get{expr, name}
 		} else {
 			break
 		}
@@ -171,6 +176,9 @@ func (p *Parser) finishCall(callee Expr) Expr {
 }
 
 func (p *Parser) primary() Expr {
+	if p.match(THIS) {
+		return &This{p.previous()}
+	}
 	if p.match(FALSE) {
 		return &Literal{false}
 	}
@@ -239,6 +247,9 @@ func (p *Parser) declaration() Stmt {
 			hadError = false
 		}
 	}()
+	if p.match(CLASS) {
+		return p.classDeclaration()
+	}
 	if p.match(FUN) {
 		return p.function("function")
 	}
@@ -246,6 +257,18 @@ func (p *Parser) declaration() Stmt {
 		return p.varDeclaration()
 	}
 	return p.statement()
+}
+
+func (p *Parser) classDeclaration() Stmt {
+	name := p.consume(IDENTIFIER, "Expect class name.")
+	p.consume(LEFT_BRACE, "Expect '{' before class body.")
+
+	var methods []*Function
+	for !p.check(RIGHT_BRACE) && !p.isAtEnd() {
+		methods = append(methods, p.function("method").(*Function))
+	}
+	p.consume(RIGHT_BRACE, "Expect '}' after class body.")
+	return &Class{name, methods}
 }
 
 func (p *Parser) function(kind string) Stmt {

@@ -15,6 +15,9 @@ type ExprVisitor interface {
 	VisitAssignExpr(Expr) any
 	VisitLogicalExpr(Expr) any
 	VisitCallExpr(Expr) any
+	VisitGetExpr(Expr) any
+	VisitSetExpr(Expr) any
+	VisitThisExpr(Expr) any
 }
 
 type Binary struct {
@@ -87,4 +90,31 @@ type Call struct {
 
 func (e *Call) Accept(v ExprVisitor) (ret any) {
 	return v.VisitCallExpr(e)
+}
+
+type Get struct {
+	object Expr
+	name   *Token
+}
+
+func (e *Get) Accept(v ExprVisitor) (ret any) {
+	return v.VisitGetExpr(e)
+}
+
+type Set struct {
+	object Expr
+	name   *Token
+	value  Expr
+}
+
+func (e *Set) Accept(v ExprVisitor) (ret any) {
+	return v.VisitSetExpr(e)
+}
+
+type This struct {
+	keyword *Token
+}
+
+func (e *This) Accept(v ExprVisitor) (ret any) {
+	return v.VisitThisExpr(e)
 }

@@ -70,6 +70,8 @@ func ToString(in any) string {
 		return fmt.Sprintf("%d", in)
 	case Callable:
 		return in.(Callable).ToString()
+	case *LoxInstance:
+		return in.(*LoxInstance).ToString()
 	default:
 		return fmt.Sprintf("%v", in)
 	}
