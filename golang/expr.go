@@ -17,6 +17,7 @@ type ExprVisitor interface {
 	VisitCallExpr(Expr) any
 	VisitGetExpr(Expr) any
 	VisitSetExpr(Expr) any
+	VisitSuperExpr(Expr) any
 	VisitThisExpr(Expr) any
 }
 
@@ -109,6 +110,15 @@ type Set struct {
 
 func (e *Set) Accept(v ExprVisitor) (ret any) {
 	return v.VisitSetExpr(e)
+}
+
+type Super struct {
+	keyword *Token
+	method  *Token
+}
+
+func (e *Super) Accept(v ExprVisitor) (ret any) {
+	return v.VisitSuperExpr(e)
 }
 
 type This struct {

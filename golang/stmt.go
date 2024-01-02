@@ -71,8 +71,9 @@ func (e *Block) Accept(v StmtVisitor) (ret any) {
 }
 
 type Class struct {
-	name    *Token
-	methods []*Function
+	name       *Token
+	superclass *Variable
+	methods    []*Function
 }
 
 func (e *Class) Accept(v StmtVisitor) (ret any) {

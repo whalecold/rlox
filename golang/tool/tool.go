@@ -26,6 +26,7 @@ func main() {
 		"Call:callee Expr,paren *Token,arguments []Expr",
 		"Get:object Expr,name *Token",
 		"Set:object Expr,name *Token,value Expr",
+		"Super:keyword *Token,method *Token",
 		"This:keyword *Token",
 	})
 
@@ -36,7 +37,7 @@ func main() {
 		"Return:keyword *Token,value Expr",
 		"Var:name *Token,initializer Expr",
 		"Block:statements []Stmt",
-		"Class:name *Token,methods []*Function",
+		"Class:name *Token,superclass *Variable,methods []*Function",
 		"If:condition Expr,thenBranch Stmt,elseBranch Stmt",
 		"While:condition Expr,body Stmt",
 	})

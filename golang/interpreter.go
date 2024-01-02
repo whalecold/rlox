@@ -204,6 +204,25 @@ func (i *Interpreter) VisitSetExpr(expr Expr) any {
 	return nil
 }
 
+func (i *Interpreter) VisitSuperExpr(expr Expr) any {
+	e, ok := expr.(*Super)
+	if !ok {
+		panic("should be super type expr")
+	}
+	distance := i.locals[e]
+	supperclass := i.env.GetAt(distance, "super").(*LoxClass)
+	object := i.env.GetAt(distance-1, "this").(*LoxInstance)
+	method := supperclass.FindMethod(e.method)
+	if method == nil {
+		Panic(e.method.line, fmt.Sprintf("Undefined property '%s'.", e.method.lexeme))
+	}
+	m, ok := method.(Callable)
+	if !ok {
+		Panic(e.method.line, fmt.Sprintf("'%s' is not a function.", e.method.lexeme))
+	}
+	return m.Bind(object)
+}
+
 func (i *Interpreter) VisitThisExpr(expr Expr) any {
 	e, ok := expr.(*This)
 	if !ok {
@@ -237,14 +256,35 @@ func (i *Interpreter) VisitClassStmt(stmt Stmt) any {
 	if !ok {
 		panic("should be class type stmt")
 	}
+
+	var superclass *LoxClass
+	if s.superclass != nil {
+		sc := i.evaluate(s.superclass)
+		var ok bool
+		superclass, ok = sc.(*LoxClass)
+		if !ok {
+			Panic(s.superclass.name.line, "Superclass must be a class")
+		}
+	}
+
 	i.env.Define(s.name.lexeme, nil)
+
+	if s.superclass != nil {
+		i.env = NewEnvironmentWithAncestor(i.env)
+		i.env.Define("super", superclass)
+	}
 
 	methods := make(map[string]Callable)
 	for _, method := range s.methods {
 		methods[method.name.lexeme] = NewCallable(method, i.env, method.name.lexeme == "init")
 	}
 
-	loxClass := NewLoxClass(s.name.lexeme, methods)
+	loxClass := NewLoxClass(s.name.lexeme, superclass, methods)
+
+	if s.superclass != nil {
+		i.env = i.env.enclosing
+	}
+
 	i.env.Assign(s.name, loxClass)
 	return nil
 }

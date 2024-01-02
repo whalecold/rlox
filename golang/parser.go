@@ -176,6 +176,12 @@ func (p *Parser) finishCall(callee Expr) Expr {
 }
 
 func (p *Parser) primary() Expr {
+	if p.match(SUPER) {
+		keyword := p.previous()
+		p.consume(DOT, "Expect '.' after 'super'.")
+		method := p.consume(IDENTIFIER, "Expect superclass method name.")
+		return &Super{keyword, method}
+	}
 	if p.match(THIS) {
 		return &This{p.previous()}
 	}
@@ -261,6 +267,13 @@ func (p *Parser) declaration() Stmt {
 
 func (p *Parser) classDeclaration() Stmt {
 	name := p.consume(IDENTIFIER, "Expect class name.")
+
+	var superclass *Variable
+	if p.match(LESS) {
+		p.consume(IDENTIFIER, "Expect superclass name.")
+		superclass = &Variable{p.previous()}
+	}
+
 	p.consume(LEFT_BRACE, "Expect '{' before class body.")
 
 	var methods []*Function
@@ -268,7 +281,7 @@ func (p *Parser) classDeclaration() Stmt {
 		methods = append(methods, p.function("method").(*Function))
 	}
 	p.consume(RIGHT_BRACE, "Expect '}' after class body.")
-	return &Class{name, methods}
+	return &Class{name, superclass, methods}
 }
 
 func (p *Parser) function(kind string) Stmt {

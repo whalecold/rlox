@@ -16,6 +16,7 @@ type ClassType int
 const (
 	CLASSNONE ClassType = iota
 	CLASSCLASS
+	CLASSSUB
 )
 
 type Resolver struct {
@@ -85,6 +86,21 @@ func (r *Resolver) VisitSetExpr(expr Expr) any {
 	}
 	r.resolveExpr(e.object)
 	r.resolveExpr(e.value)
+	return nil
+}
+
+func (r *Resolver) VisitSuperExpr(expr Expr) any {
+	e, ok := expr.(*Super)
+	if !ok {
+		panic("should be super type expr")
+	}
+	if r.currentClass == CLASSNONE {
+		Panic(e.keyword.line, "Can't use 'super' outside of a class.")
+	}
+	if r.currentClass != CLASSSUB {
+		Panic(e.keyword.line, "Can't use 'super' in a class with no superclass.")
+	}
+	r.resolveLocal(e, e.keyword)
 	return nil
 }
 
@@ -310,6 +326,20 @@ func (r *Resolver) VisitClassStmt(stmt Stmt) any {
 
 	r.declare(s.name)
 
+	if s.superclass != nil && s.name.lexeme == s.superclass.name.lexeme {
+		Panic(s.superclass.name.line, "A class can't inherit from itself.")
+	}
+
+	if s.superclass != nil {
+		r.currentClass = CLASSSUB
+		r.resolveExpr(s.superclass)
+	}
+
+	if s.superclass != nil {
+		r.beginScope()
+		r.scopes[len(r.scopes)-1]["super"] = true
+	}
+
 	r.beginScope()
 	r.scopes[len(r.scopes)-1]["this"] = true
 
@@ -321,6 +351,11 @@ func (r *Resolver) VisitClassStmt(stmt Stmt) any {
 		r.resolveFunction(method, functionType)
 	}
 	r.endScope()
+
+	if s.superclass != nil {
+		r.endScope()
+	}
+
 	r.define(s.name)
 
 	r.currentClass = enclosingClass
