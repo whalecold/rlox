@@ -96,7 +96,7 @@ func (c *callableImpl) Arity() int {
 
 func injectPrimitives(i *Interpreter) *Interpreter {
 	i.env.Define("clock", NewPrimitive(0, func(args []any) any {
-		return time.Now().Unix()
+		return float64(time.Now().Unix())
 	}))
 	return i
 }
