@@ -3,3 +3,4 @@
 golang/vendor
 golang/glox
 *.glox
+.DS_Store
